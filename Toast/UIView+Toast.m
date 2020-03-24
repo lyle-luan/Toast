@@ -101,7 +101,7 @@ static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
 
 - (void)makeToast: (NSString *)title withMessage: (NSString *)message withImage: (UIImage *)image withCompletion:(void(^)(BOOL didTap))completion
 {
-    [self makeToast:nil duration:500 position:CSToastPositionCenter title:title image:image style:nil completion:^(BOOL didTap) {
+    [self makeToast:nil duration:1 position:CSToastPositionCenter title:title image:image style:nil completion:^(BOOL didTap) {
         completion(didTap);
     }];
 }
