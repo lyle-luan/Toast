@@ -43,6 +43,8 @@ extern const NSString * CSToastPositionBottom;
  */
 @interface UIView (Toast)
 
+- (void)makeSuccessToast: (NSString *)title withCompletion:(void(^)(BOOL didTap))completion;
+- (void)makeFailToast: (NSString *)title withCompletion:(void(^)(BOOL didTap))completion;
 /**
  Creates and presents a new toast view with a message and displays it with the
  default duration and position. Styled using the shared style.

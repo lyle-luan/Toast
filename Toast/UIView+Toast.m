@@ -85,6 +85,27 @@ static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
     [self showToast:toast duration:duration position:position completion:completion];
 }
 
+- (void)makeFailToast: (NSString *)title withCompletion:(void(^)(BOOL didTap))completion
+{
+    [self makeToast:title withMessage:nil withImage:[UIImage imageNamed:@"toast_failed"] withCompletion:^(BOOL didTap) {
+        completion(didTap);
+    }];
+}
+
+- (void)makeSuccessToast: (NSString *)title withCompletion:(void(^)(BOOL didTap))completion
+{
+    [self makeToast:title withMessage:nil withImage:[UIImage imageNamed:@"toast_success"] withCompletion:^(BOOL didTap) {
+        completion(didTap);
+    }];
+}
+
+- (void)makeToast: (NSString *)title withMessage: (NSString *)message withImage: (UIImage *)image withCompletion:(void(^)(BOOL didTap))completion
+{
+    [self makeToast:nil duration:500 position:CSToastPositionCenter title:title image:image style:nil completion:^(BOOL didTap) {
+        completion(didTap);
+    }];
+}
+
 #pragma mark - Show Toast Methods
 
 - (void)showToast:(UIView *)toast {
@@ -229,6 +250,9 @@ static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
     UILabel *titleLabel = nil;
     UIImageView *imageView = nil;
     
+    CGFloat wrapperWidth = 270.0f;
+    CGFloat wrapperHeight = 140.0f;
+    
     UIView *wrapperView = [[UIView alloc] init];
     wrapperView.autoresizingMask = (UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin);
     wrapperView.layer.cornerRadius = style.cornerRadius;
@@ -245,7 +269,7 @@ static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
     if(image != nil) {
         imageView = [[UIImageView alloc] initWithImage:image];
         imageView.contentMode = UIViewContentModeScaleAspectFit;
-        imageView.frame = CGRectMake(style.horizontalPadding, style.verticalPadding, style.imageSize.width, style.imageSize.height);
+        imageView.frame = CGRectMake((wrapperWidth-style.imageSize.width)/2, 30, style.imageSize.width, style.imageSize.height);
     }
     
     CGRect imageRect = CGRectZero;
@@ -269,11 +293,11 @@ static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
         titleLabel.text = title;
         
         // size the title label according to the length of the text
-        CGSize maxSizeTitle = CGSizeMake((self.bounds.size.width * style.maxWidthPercentage) - imageRect.size.width, self.bounds.size.height * style.maxHeightPercentage);
-        CGSize expectedSizeTitle = [titleLabel sizeThatFits:maxSizeTitle];
+        CGSize maxSizeTitle = CGSizeMake(wrapperWidth, 24);
+//        CGSize expectedSizeTitle = [titleLabel sizeThatFits:maxSizeTitle];
         // UILabel can return a size larger than the max size when the number of lines is 1
-        expectedSizeTitle = CGSizeMake(MIN(maxSizeTitle.width, expectedSizeTitle.width), MIN(maxSizeTitle.height, expectedSizeTitle.height));
-        titleLabel.frame = CGRectMake(0.0, 0.0, expectedSizeTitle.width, expectedSizeTitle.height);
+//        expectedSizeTitle = CGSizeMake(MIN(maxSizeTitle.width, expectedSizeTitle.width), MIN(maxSizeTitle.height, expectedSizeTitle.height));
+        titleLabel.frame = CGRectMake(0.0, 0.0, maxSizeTitle.width, maxSizeTitle.height);
     }
     
     if (message != nil) {
@@ -287,18 +311,18 @@ static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
         messageLabel.alpha = 1.0;
         messageLabel.text = message;
         
-        CGSize maxSizeMessage = CGSizeMake((self.bounds.size.width * style.maxWidthPercentage) - imageRect.size.width, self.bounds.size.height * style.maxHeightPercentage);
-        CGSize expectedSizeMessage = [messageLabel sizeThatFits:maxSizeMessage];
+        CGSize maxSizeMessage = CGSizeMake(wrapperWidth, 24);;
+//        CGSize expectedSizeMessage = [messageLabel sizeThatFits:maxSizeMessage];
         // UILabel can return a size larger than the max size when the number of lines is 1
-        expectedSizeMessage = CGSizeMake(MIN(maxSizeMessage.width, expectedSizeMessage.width), MIN(maxSizeMessage.height, expectedSizeMessage.height));
-        messageLabel.frame = CGRectMake(0.0, 0.0, expectedSizeMessage.width, expectedSizeMessage.height);
+//        expectedSizeMessage = CGSizeMake(MIN(maxSizeMessage.width, expectedSizeMessage.width), MIN(maxSizeMessage.height, expectedSizeMessage.height));
+        messageLabel.frame = CGRectMake(0.0, 0.0, maxSizeMessage.width, maxSizeMessage.height);
     }
     
     CGRect titleRect = CGRectZero;
     
     if(titleLabel != nil) {
-        titleRect.origin.x = imageRect.origin.x + imageRect.size.width + style.horizontalPadding;
-        titleRect.origin.y = style.verticalPadding;
+        titleRect.origin.x = 0;
+        titleRect.origin.y = 12+imageView.frame.origin.y+imageView.frame.size.height;
         titleRect.size.width = titleLabel.bounds.size.width;
         titleRect.size.height = titleLabel.bounds.size.height;
     }
@@ -306,8 +330,8 @@ static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
     CGRect messageRect = CGRectZero;
     
     if(messageLabel != nil) {
-        messageRect.origin.x = imageRect.origin.x + imageRect.size.width + style.horizontalPadding;
-        messageRect.origin.y = titleRect.origin.y + titleRect.size.height + style.verticalPadding;
+        messageRect.origin.x = titleRect.origin.x;
+        messageRect.origin.y = titleRect.origin.y + titleRect.size.height + 8;
         messageRect.size.width = messageLabel.bounds.size.width;
         messageRect.size.height = messageLabel.bounds.size.height;
     }
@@ -316,8 +340,11 @@ static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
     CGFloat longerX = MAX(titleRect.origin.x, messageRect.origin.x);
     
     // Wrapper width uses the longerWidth or the image width, whatever is larger. Same logic applies to the wrapper height.
-    CGFloat wrapperWidth = MAX((imageRect.size.width + (style.horizontalPadding * 2.0)), (longerX + longerWidth + style.horizontalPadding));
-    CGFloat wrapperHeight = MAX((messageRect.origin.y + messageRect.size.height + style.verticalPadding), (imageRect.size.height + (style.verticalPadding * 2.0)));
+//    CGFloat wrapperWidth = MAX((imageRect.size.width + (style.horizontalPadding * 2.0)), (longerX + longerWidth + style.horizontalPadding));
+//    CGFloat wrapperHeight = MAX((messageRect.origin.y + messageRect.size.height + style.verticalPadding), (imageRect.size.height + (style.verticalPadding * 2.0)));
+    
+    wrapperWidth = 270.0f;
+    wrapperHeight = 140.0f;
     
     wrapperView.frame = CGRectMake(0.0, 0.0, wrapperWidth, wrapperHeight);
     

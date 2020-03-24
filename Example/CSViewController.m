@@ -55,6 +55,29 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:ZOToastDemoCellId];
+    
+    
+    
+    CSToastStyle *style = [[CSToastStyle alloc] initWithDefaultStyle];
+    style.backgroundColor = [UIColor blackColor];
+    style.titleColor = [UIColor whiteColor];
+    style.messageColor = [UIColor whiteColor];
+    style.verticalPadding = 30.0f;
+    style.cornerRadius = 14.0f;
+    style.titleFont = [UIFont systemFontOfSize:17.0];
+    style.titleAlignment = NSTextAlignmentCenter;
+    style.messageFont = [UIFont systemFontOfSize:13.0];
+    style.messageAlignment = NSTextAlignmentCenter;
+    style.displayShadow = YES;
+    style.shadowColor = [UIColor blackColor];
+    style.shadowOpacity = 0.5;
+    style.shadowRadius = 4;
+    style.shadowOffset = CGSizeMake(2, 2);
+    style.imageSize = CGSizeMake(35, 35);
+    style.maxWidthPercentage = 0.72;
+    style.maxHeightPercentage = 0.21;
+    
+     [CSToastManager setSharedStyle:style];
 }
 
 #pragma mark - Rotation
@@ -173,15 +196,23 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
     
     if (indexPath.row == 0) {
         
+        [self.navigationController.view makeSuccessToast:@"校准成功" withCompletion:^(BOOL didTap) {
+            NSLog(@"===>成功");
+        }];
+        
         // Make toast
-        [self.navigationController.view makeToast:@"This is a piece of toast"];
+//        [self.navigationController.view makeToast:@"This is a piece of toast"];
         
     } else if (indexPath.row == 1) {
         
+        [self.view makeFailToast:@"校准失败" withCompletion:^(BOOL didTap) {
+            NSLog(@"===>失败");
+        }];
+        
         // Make toast with a duration and position
-        [self.navigationController.view makeToast:@"This is a piece of toast on top for 3 seconds"
-                                         duration:3.0
-                                         position:CSToastPositionTop];
+//        [self.navigationController.view makeToast:@"This is a piece of toast on top for 3 seconds"
+//                                         duration:3.0
+//                                         position:CSToastPositionTop];
         
     } else if (indexPath.row == 2) {
         
