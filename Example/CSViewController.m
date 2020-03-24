@@ -200,58 +200,27 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
             NSLog(@"===>成功");
         }];
         
-        // Make toast
-//        [self.navigationController.view makeToast:@"This is a piece of toast"];
         
     } else if (indexPath.row == 1) {
         
         [self.view makeFailToast:@"校准失败" withCompletion:^(BOOL didTap) {
             NSLog(@"===>失败");
         }];
-        
-        // Make toast with a duration and position
-//        [self.navigationController.view makeToast:@"This is a piece of toast on top for 3 seconds"
-//                                         duration:3.0
-//                                         position:CSToastPositionTop];
+
         
     } else if (indexPath.row == 2) {
         
-        // Make toast with a title
-        [self.navigationController.view makeToast:@"This is a piece of toast with a title"
-                                         duration:2.0
-                                         position:CSToastPositionTop
-                                            title:@"Toast Title"
-                                            image:nil
-                                            style:nil
-                                       completion:nil];
-        
+        [self.navigationController.view makeActivityToast];
+
     } else if (indexPath.row == 3) {
         
-        // Make toast with an image
-        [self.navigationController.view makeToast:@"This is a piece of toast with an image"
-                                         duration:2.0
-                                         position:CSToastPositionCenter
-                                            title:nil
-                                            image:[UIImage imageNamed:@"toast.png"]
-                                            style:nil
-                                       completion:nil];
+        [self.navigationController.view makeActivityToast:@"校准中" withMessage:@"请保持设备直立" withCompletion:^(BOOL didTap) {
+            ;
+        }];
         
     } else if (indexPath.row == 4) {
         
-        // Make toast with an image, title, and completion block
-        [self.navigationController.view makeToast:@"This is a piece of toast with a title, image, and completion block"
-                                         duration:2.0
-                                         position:CSToastPositionBottom
-                                            title:@"Toast Title"
-                                            image:[UIImage imageNamed:@"toast.png"]
-                                            style:nil
-                                       completion:^(BOOL didTap) {
-                                           if (didTap) {
-                                               NSLog(@"completion from tap");
-                                           } else {
-                                               NSLog(@"completion without tap");
-                                           }
-                                       }];
+        [self.navigationController.view hideActivityToast];
         
     } else if (indexPath.row == 5) {
         

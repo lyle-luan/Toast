@@ -42,6 +42,7 @@ static const NSString * CSToastCompletionKey        = @"CSToastCompletionKey";
 static const NSString * CSToastActiveKey            = @"CSToastActiveKey";
 static const NSString * CSToastActivityViewKey      = @"CSToastActivityViewKey";
 static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
+static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActivityTitleMessageViewKey";
 
 @interface UIView (ToastPrivate)
 
@@ -80,6 +81,129 @@ static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
     [self showToast:toast duration:duration position:position completion:nil];
 }
 
+- (void)makeActivityToast
+{
+    [self makeToastActivity:CSToastPositionCenter];
+}
+
+- (void)makeActivityToast: (NSString *)title withMessage: (NSString *)message withCompletion:(void(^)(BOOL didTap))completion
+{
+    UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityTitleMessageViewKey);
+    if (existingActivityView != nil) return;
+    
+    CSToastStyle *style = [CSToastManager sharedStyle];
+    
+    CGFloat wrapperWidth = 270.0f;
+    CGFloat wrapperHeight = 140.0f;
+    
+    UIView *activityView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, wrapperWidth, wrapperHeight)];
+    activityView.center = [self cs_centerPointForPosition:CSToastPositionCenter withToast:activityView];
+    activityView.backgroundColor = style.backgroundColor;
+    activityView.alpha = 0.0;
+    activityView.autoresizingMask = (UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin);
+    activityView.layer.cornerRadius = style.cornerRadius;
+    
+    if (style.displayShadow) {
+        activityView.layer.shadowColor = style.shadowColor.CGColor;
+        activityView.layer.shadowOpacity = style.shadowOpacity;
+        activityView.layer.shadowRadius = style.shadowRadius;
+        activityView.layer.shadowOffset = style.shadowOffset;
+    }
+    
+    UIActivityIndicatorView *activityIndicatorView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
+    activityIndicatorView.center = CGPointMake(activityView.bounds.size.width / 2, activityIndicatorView.bounds.size.height / 2 + 30);
+    [activityView addSubview:activityIndicatorView];
+    [activityIndicatorView startAnimating];
+    
+    UILabel *messageLabel = nil;
+    UILabel *titleLabel = nil;
+    
+    if (title != nil) {
+        titleLabel = [[UILabel alloc] init];
+        titleLabel.numberOfLines = style.titleNumberOfLines;
+        titleLabel.font = style.titleFont;
+        titleLabel.textAlignment = style.titleAlignment;
+        titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        titleLabel.textColor = style.titleColor;
+        titleLabel.backgroundColor = [UIColor clearColor];
+        titleLabel.alpha = 1.0;
+        titleLabel.text = title;
+        
+        CGSize maxSizeTitle = CGSizeMake(wrapperWidth, 22);
+        titleLabel.frame = CGRectMake(0.0, 0.0, maxSizeTitle.width, maxSizeTitle.height);
+    }
+    
+    if (message != nil) {
+        messageLabel = [[UILabel alloc] init];
+        messageLabel.numberOfLines = style.messageNumberOfLines;
+        messageLabel.font = style.messageFont;
+        messageLabel.textAlignment = style.messageAlignment;
+        messageLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        messageLabel.textColor = style.messageColor;
+        messageLabel.backgroundColor = [UIColor clearColor];
+        messageLabel.alpha = 1.0;
+        messageLabel.text = message;
+        
+        CGSize maxSizeMessage = CGSizeMake(wrapperWidth, 18);
+        messageLabel.frame = CGRectMake(0.0, 0.0, maxSizeMessage.width, maxSizeMessage.height);
+    }
+    
+    CGRect titleRect = CGRectZero;
+    
+    if(titleLabel != nil) {
+        titleRect.origin.x = 0;
+        titleRect.origin.y = 12+activityIndicatorView.frame.origin.y+activityIndicatorView.frame.size.height;
+        titleRect.size.width = titleLabel.bounds.size.width;
+        titleRect.size.height = titleLabel.bounds.size.height;
+    }
+    
+    CGRect messageRect = CGRectZero;
+    
+    if(messageLabel != nil) {
+        messageRect.origin.x = titleRect.origin.x;
+        messageRect.origin.y = titleRect.origin.y + titleRect.size.height + 8;
+        messageRect.size.width = messageLabel.bounds.size.width;
+        messageRect.size.height = messageLabel.bounds.size.height;
+    }
+    
+    if(titleLabel != nil) {
+        titleLabel.frame = titleRect;
+        [activityView addSubview:titleLabel];
+    }
+    
+    if(messageLabel != nil) {
+        messageLabel.frame = messageRect;
+        [activityView addSubview:messageLabel];
+    }
+    
+    // associate the activity view with self
+    objc_setAssociatedObject (self, &CSToastActivityTitleMessageViewKey, activityView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    
+    [self addSubview:activityView];
+    
+    [UIView animateWithDuration:style.fadeDuration
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+                         activityView.alpha = 1.0;
+                     } completion:completion];
+}
+
+- (void)hideActivityToast {
+    UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityTitleMessageViewKey);
+    if (existingActivityView != nil) {
+        [UIView animateWithDuration:[[CSToastManager sharedStyle] fadeDuration]
+                              delay:0.0
+                            options:(UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState)
+                         animations:^{
+                             existingActivityView.alpha = 0.0;
+                         } completion:^(BOOL finished) {
+                             [existingActivityView removeFromSuperview];
+                             objc_setAssociatedObject (self, &CSToastActivityTitleMessageViewKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                         }];
+    }
+}
+
 - (void)makeToast:(NSString *)message duration:(NSTimeInterval)duration position:(id)position title:(NSString *)title image:(UIImage *)image style:(CSToastStyle *)style completion:(void(^)(BOOL didTap))completion {
     UIView *toast = [self toastViewForMessage:message title:title image:image style:style];
     [self showToast:toast duration:duration position:position completion:completion];
@@ -101,7 +225,8 @@ static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
 
 - (void)makeToast: (NSString *)title withMessage: (NSString *)message withImage: (UIImage *)image withCompletion:(void(^)(BOOL didTap))completion
 {
-    [self makeToast:nil duration:1 position:CSToastPositionCenter title:title image:image style:nil completion:^(BOOL didTap) {
+    CSToastStyle *style = [CSToastManager sharedStyle];
+    [self makeToast:nil duration:style.fadeDuration position:CSToastPositionCenter title:title image:image style:nil completion:^(BOOL didTap) {
         completion(didTap);
     }];
 }
@@ -407,6 +532,9 @@ static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
     if (existingActivityView != nil) return;
     
     CSToastStyle *style = [CSToastManager sharedStyle];
+    
+    CGFloat wrapperWidth = 270.0f;
+    CGFloat wrapperHeight = 140.0f;
     
     UIView *activityView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, style.activitySize.width, style.activitySize.height)];
     activityView.center = [self cs_centerPointForPosition:position withToast:activityView];
