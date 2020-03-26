@@ -76,6 +76,8 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
     style.imageSize = CGSizeMake(35, 35);
     style.maxWidthPercentage = 0.72;
     style.maxHeightPercentage = 0.21;
+    style.showDuration = 1.5;
+    style.activityTimeoutDuration = 5;
     
      [CSToastManager setSharedStyle:style];
 }
@@ -162,15 +164,15 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         
         if (indexPath.row == 0) {
-            cell.textLabel.text = @"Make toast";
+            cell.textLabel.text = @"成功";
         } else if (indexPath.row == 1) {
-            cell.textLabel.text = @"Make toast on top for 3 seconds";
+            cell.textLabel.text = @"失败";
         } else if (indexPath.row == 2) {
-            cell.textLabel.text = @"Make toast with a title";
+            cell.textLabel.text = @"普通 loading";
         } else if (indexPath.row == 3) {
-            cell.textLabel.text = @"Make toast with an image";
+            cell.textLabel.text = @"带文字 loading";
         } else if (indexPath.row == 4) {
-            cell.textLabel.text = @"Make toast with a title, image, and completion block";
+            cell.textLabel.text = @"取消 loading";
         } else if (indexPath.row == 5) {
             cell.textLabel.text = @"Make toast with a custom style";
         } else if (indexPath.row == 6) {
@@ -203,18 +205,20 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
         
     } else if (indexPath.row == 1) {
         
-        [self.view makeFailToast:@"校准失败" withCompletion:^(BOOL didTap) {
+        [self.navigationController.view makeFailToast:@"校准失败" withCompletion:^(BOOL didTap) {
             NSLog(@"===>失败");
         }];
 
         
     } else if (indexPath.row == 2) {
         
-        [self.navigationController.view makeActivityToast];
+        [self.navigationController.view makeActivityToastWithTimeoutCompletion:^{
+            NSLog(@"===>超时");
+        }];
 
     } else if (indexPath.row == 3) {
         
-        [self.navigationController.view makeActivityToast:@"校准中" withMessage:@"请保持设备直立" withCompletion:^(BOOL didTap) {
+        [self.navigationController.view makeActivityToast:@"校准中" withMessage:@"请保持设备直立" withTimeoutCompletion:^() {
             ;
         }];
         

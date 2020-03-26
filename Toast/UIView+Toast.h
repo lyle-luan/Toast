@@ -45,8 +45,8 @@ extern const NSString * CSToastPositionBottom;
 
 - (void)makeSuccessToast: (NSString *)title withCompletion:(void(^)(BOOL didTap))completion;
 - (void)makeFailToast: (NSString *)title withCompletion:(void(^)(BOOL didTap))completion;
-- (void)makeActivityToast;
-- (void)makeActivityToast: (NSString *)title withMessage: (NSString *)message withCompletion:(void(^)(BOOL didTap))completion;
+- (void)makeActivityToastWithTimeoutCompletion:(void(^)(void))completion; //1.支持超时，页面写一个 BOOL，超时了则置位，这样返回结果就不响应，重新发送蓝牙后，该 BOOL 重新计算。
+- (void)makeActivityToast: (NSString *)title withMessage: (NSString *)message withTimeoutCompletion:(void(^)(void))completion;
 - (void)hideActivityToast;
 
 
@@ -344,8 +344,10 @@ extern const NSString * CSToastPositionBottom;
 /**
  The fade in/out animation duration. Default is 0.2.
  */
-@property (assign, nonatomic) NSTimeInterval fadeDuration;
+@property (assign, nonatomic) NSTimeInterval animationDuration;
 
+@property (assign, nonatomic) NSTimeInterval showDuration;
+@property (assign, nonatomic) NSTimeInterval activityTimeoutDuration;
 /**
  Creates a new instance of `CSToastStyle` with all the default values set.
  */

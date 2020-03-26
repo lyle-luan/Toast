@@ -58,6 +58,7 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
 - (void)cs_hideToast:(UIView *)toast;
 - (void)cs_hideToast:(UIView *)toast fromTap:(BOOL)fromTap;
 - (void)cs_toastTimerDidFinish:(NSTimer *)timer;
+- (void)cs_hideActivityToast;
 - (void)cs_handleToastTapped:(UITapGestureRecognizer *)recognizer;
 - (CGPoint)cs_centerPointForPosition:(id)position withToast:(UIView *)toast;
 - (NSMutableArray *)cs_toastQueue;
@@ -66,28 +67,74 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
 
 @implementation UIView (Toast)
 
-#pragma mark - Make Toast Methods
-
-- (void)makeToast:(NSString *)message {
-    [self makeToast:message duration:[CSToastManager defaultDuration] position:[CSToastManager defaultPosition] style:nil];
-}
-
-- (void)makeToast:(NSString *)message duration:(NSTimeInterval)duration position:(id)position {
-    [self makeToast:message duration:duration position:position style:nil];
-}
-
-- (void)makeToast:(NSString *)message duration:(NSTimeInterval)duration position:(id)position style:(CSToastStyle *)style {
-    UIView *toast = [self toastViewForMessage:message title:nil image:nil style:style];
-    [self showToast:toast duration:duration position:position completion:nil];
-}
-
-- (void)makeActivityToast
+- (void)makeFailToast: (NSString *)title withCompletion:(void(^)(BOOL didTap))completion
 {
-    [self makeToastActivity:CSToastPositionCenter];
+    [self makeToast:title withMessage:nil withImage:[UIImage imageNamed:@"toast_failed"] withCompletion:^(BOOL didTap) {
+        completion(didTap);
+    }];
 }
 
-- (void)makeActivityToast: (NSString *)title withMessage: (NSString *)message withCompletion:(void(^)(BOOL didTap))completion
+- (void)makeSuccessToast: (NSString *)title withCompletion:(void(^)(BOOL didTap))completion
 {
+    [self makeToast:title withMessage:nil withImage:[UIImage imageNamed:@"toast_success"] withCompletion:^(BOOL didTap) {
+        completion(didTap);
+    }];
+}
+
+- (void)makeActivityToastWithTimeoutCompletion:(void(^)(void))completion
+{
+    UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityViewKey);
+    if (existingActivityView != nil) return;
+    
+    CSToastStyle *style = [CSToastManager sharedStyle];
+    
+    UIView *activityView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, style.activitySize.width, style.activitySize.height)];
+    activityView.center = [self cs_centerPointForPosition:CSToastPositionCenter withToast:activityView];
+    activityView.backgroundColor = style.backgroundColor;
+    activityView.alpha = 0.0;
+    activityView.autoresizingMask = (UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin);
+    activityView.layer.cornerRadius = style.cornerRadius;
+    
+    if (style.displayShadow) {
+        activityView.layer.shadowColor = style.shadowColor.CGColor;
+        activityView.layer.shadowOpacity = style.shadowOpacity;
+        activityView.layer.shadowRadius = style.shadowRadius;
+        activityView.layer.shadowOffset = style.shadowOffset;
+    }
+    
+    UIActivityIndicatorView *activityIndicatorView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
+    activityIndicatorView.center = CGPointMake(activityView.bounds.size.width / 2, activityView.bounds.size.height / 2);
+    [activityView addSubview:activityIndicatorView];
+    [activityIndicatorView startAnimating];
+    
+    UIView *bgView = [[UIView alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    bgView.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.08];
+    bgView.userInteractionEnabled = YES;
+    [bgView addSubview:activityView];
+    
+    [self addSubview:activityView];
+    [self addSubview:bgView];
+    [self bringSubviewToFront:activityView];
+    
+    objc_setAssociatedObject (self, &CSToastActivityViewKey, activityView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    
+    [self addSubview:activityView];
+    
+    [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
+                          delay:0.0
+                        options:(UIViewAnimationOptionCurveEaseOut)
+                     animations:^{
+                         activityView.alpha = 1.0;
+                     } completion:^(BOOL finished) {
+                         NSTimer *timer = [NSTimer timerWithTimeInterval:[[CSToastManager sharedStyle] activityTimeoutDuration] target:self selector:@selector(cs_hideActivityToast) userInfo:activityView repeats:NO];
+                         [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
+                         objc_setAssociatedObject(activityView, &CSToastTimerKey, timer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                     }];
+}
+
+- (void)makeActivityToast: (NSString *)title withMessage: (NSString *)message withTimeoutCompletion:(void(^)(void))completion
+{
+#if 0
     UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityTitleMessageViewKey);
     if (existingActivityView != nil) return;
     
@@ -181,27 +228,49 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
     
     [self addSubview:activityView];
     
-    [UIView animateWithDuration:style.fadeDuration
+    [UIView animateWithDuration:style.animationDuration
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
                          activityView.alpha = 1.0;
-                     } completion:completion];
+                     } completion:nil];
+#endif
 }
 
 - (void)hideActivityToast {
-    UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityTitleMessageViewKey);
+    UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityViewKey);
     if (existingActivityView != nil) {
-        [UIView animateWithDuration:[[CSToastManager sharedStyle] fadeDuration]
+        NSTimer *timer = (NSTimer *)objc_getAssociatedObject(existingActivityView, &CSToastTimerKey);
+        [timer invalidate];
+        [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
                               delay:0.0
                             options:(UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState)
                          animations:^{
                              existingActivityView.alpha = 0.0;
                          } completion:^(BOOL finished) {
                              [existingActivityView removeFromSuperview];
-                             objc_setAssociatedObject (self, &CSToastActivityTitleMessageViewKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                             objc_setAssociatedObject (self, &CSToastActivityViewKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
                          }];
     }
+}
+
+
+
+
+
+#pragma mark - Make Toast Methods
+
+- (void)makeToast:(NSString *)message {
+    [self makeToast:message duration:[CSToastManager defaultDuration] position:[CSToastManager defaultPosition] style:nil];
+}
+
+- (void)makeToast:(NSString *)message duration:(NSTimeInterval)duration position:(id)position {
+    [self makeToast:message duration:duration position:position style:nil];
+}
+
+- (void)makeToast:(NSString *)message duration:(NSTimeInterval)duration position:(id)position style:(CSToastStyle *)style {
+    UIView *toast = [self toastViewForMessage:message title:nil image:nil style:style];
+    [self showToast:toast duration:duration position:position completion:nil];
 }
 
 - (void)makeToast:(NSString *)message duration:(NSTimeInterval)duration position:(id)position title:(NSString *)title image:(UIImage *)image style:(CSToastStyle *)style completion:(void(^)(BOOL didTap))completion {
@@ -209,24 +278,10 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
     [self showToast:toast duration:duration position:position completion:completion];
 }
 
-- (void)makeFailToast: (NSString *)title withCompletion:(void(^)(BOOL didTap))completion
-{
-    [self makeToast:title withMessage:nil withImage:[UIImage imageNamed:@"toast_failed"] withCompletion:^(BOOL didTap) {
-        completion(didTap);
-    }];
-}
-
-- (void)makeSuccessToast: (NSString *)title withCompletion:(void(^)(BOOL didTap))completion
-{
-    [self makeToast:title withMessage:nil withImage:[UIImage imageNamed:@"toast_success"] withCompletion:^(BOOL didTap) {
-        completion(didTap);
-    }];
-}
-
 - (void)makeToast: (NSString *)title withMessage: (NSString *)message withImage: (UIImage *)image withCompletion:(void(^)(BOOL didTap))completion
 {
     CSToastStyle *style = [CSToastManager sharedStyle];
-    [self makeToast:nil duration:style.fadeDuration position:CSToastPositionCenter title:title image:image style:nil completion:^(BOOL didTap) {
+    [self makeToast:nil duration:style.showDuration position:CSToastPositionCenter title:title image:image style:nil completion:^(BOOL didTap) {
         completion(didTap);
     }];
 }
@@ -309,7 +364,7 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
     
     [self addSubview:toast];
     
-    [UIView animateWithDuration:[[CSToastManager sharedStyle] fadeDuration]
+    [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
                           delay:0.0
                         options:(UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction)
                      animations:^{
@@ -329,7 +384,7 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
     NSTimer *timer = (NSTimer *)objc_getAssociatedObject(toast, &CSToastTimerKey);
     [timer invalidate];
     
-    [UIView animateWithDuration:[[CSToastManager sharedStyle] fadeDuration]
+    [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
                           delay:0.0
                         options:(UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState)
                      animations:^{
@@ -357,6 +412,28 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
                              [self cs_showToast:nextToast duration:duration position:position];
                          }
                      }];
+}
+
+- (void)cs_hideActivityToast{
+    UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityViewKey);
+    if (existingActivityView != nil) {
+        NSTimer *timer = (NSTimer *)objc_getAssociatedObject(existingActivityView, &CSToastTimerKey);
+        [timer invalidate];
+        [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
+                              delay:0.0
+                            options:(UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState)
+                         animations:^{
+                             existingActivityView.alpha = 0.0;
+                         } completion:^(BOOL finished) {
+                             [existingActivityView removeFromSuperview];
+                             objc_setAssociatedObject (self, &CSToastActivityViewKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+                             void (^completion)(BOOL didTap) = objc_getAssociatedObject(existingActivityView, &CSToastCompletionKey);
+                             if (completion) {
+                                 completion(NO);
+                             }
+                         }];
+    }
 }
 
 #pragma mark - View Construction
@@ -560,7 +637,7 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
     
     [self addSubview:activityView];
     
-    [UIView animateWithDuration:style.fadeDuration
+    [UIView animateWithDuration:style.animationDuration
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
@@ -571,7 +648,7 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
 - (void)hideToastActivity {
     UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityViewKey);
     if (existingActivityView != nil) {
-        [UIView animateWithDuration:[[CSToastManager sharedStyle] fadeDuration]
+        [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
                               delay:0.0
                             options:(UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState)
                          animations:^{
@@ -639,7 +716,7 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
         self.shadowOffset = CGSizeMake(4.0, 4.0);
         self.imageSize = CGSizeMake(80.0, 80.0);
         self.activitySize = CGSizeMake(100.0, 100.0);
-        self.fadeDuration = 0.2;
+        self.animationDuration = 0.2;
     }
     return self;
 }
