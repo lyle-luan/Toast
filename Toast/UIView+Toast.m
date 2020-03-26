@@ -297,7 +297,6 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
     if (toast == nil) return;
     
     // store the completion block on the toast view
-    objc_setAssociatedObject(toast, &CSToastCompletionKey, completion, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     
     if ([CSToastManager isQueueEnabled] && [self.cs_activeToasts count] > 0) {
         // we're about to queue this toast view so we need to store the duration and position as well
@@ -308,7 +307,7 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
         [self.cs_toastQueue addObject:toast];
     } else {
         // present
-        [self cs_showToast:toast duration:duration position:position];
+        [self cs_showToast:toast duration:duration position:position completion:completion];
     }
 }
 
@@ -349,9 +348,17 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
 
 #pragma mark - Private Show/Hide Methods
 
-- (void)cs_showToast:(UIView *)toast duration:(NSTimeInterval)duration position:(id)position {
+- (void)cs_showToast:(UIView *)toast duration:(NSTimeInterval)duration position:(id)position completion:(void(^)(BOOL didTap))completion {
     toast.center = [self cs_centerPointForPosition:position withToast:toast];
-    toast.alpha = 0.0;
+    
+    UIView *bgView = [[UIView alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    bgView.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.08];
+    bgView.userInteractionEnabled = YES;
+    [bgView addSubview:toast];
+    
+    bgView.alpha = 0.0;
+    
+    objc_setAssociatedObject(bgView, &CSToastCompletionKey, completion, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     
     if ([CSToastManager isTapToDismissEnabled]) {
         UITapGestureRecognizer *recognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(cs_handleToastTapped:)];
@@ -360,19 +367,19 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
         toast.exclusiveTouch = YES;
     }
     
-    [[self cs_activeToasts] addObject:toast];
+    [[self cs_activeToasts] addObject:bgView];
     
-    [self addSubview:toast];
+    [self addSubview:bgView];
     
     [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
                           delay:0.0
                         options:(UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction)
                      animations:^{
-                         toast.alpha = 1.0;
+                         bgView.alpha = 1.0;
                      } completion:^(BOOL finished) {
-                         NSTimer *timer = [NSTimer timerWithTimeInterval:duration target:self selector:@selector(cs_toastTimerDidFinish:) userInfo:toast repeats:NO];
+                         NSTimer *timer = [NSTimer timerWithTimeInterval:duration target:self selector:@selector(cs_toastTimerDidFinish:) userInfo:bgView repeats:NO];
                          [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
-                         objc_setAssociatedObject(toast, &CSToastTimerKey, timer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                         objc_setAssociatedObject(bgView, &CSToastTimerKey, timer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
                      }];
 }
 
@@ -595,10 +602,11 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
 
 - (void)cs_handleToastTapped:(UITapGestureRecognizer *)recognizer {
     UIView *toast = recognizer.view;
-    NSTimer *timer = (NSTimer *)objc_getAssociatedObject(toast, &CSToastTimerKey);
+    UIView *bgView = toast.superview;
+    NSTimer *timer = (NSTimer *)objc_getAssociatedObject(bgView, &CSToastTimerKey);
     [timer invalidate];
     
-    [self cs_hideToast:toast fromTap:YES];
+    [self cs_hideToast:bgView fromTap:YES];
 }
 
 #pragma mark - Activity Methods
