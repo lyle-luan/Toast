@@ -50,7 +50,7 @@ extern const NSString * CSToastPositionBottom;
 - (void)hideActivityToast;
 - (void)makeOkToast: (NSString *)title withImage: (UIImage *)image withBtnTitle: (NSString *)btnTitle withBtnCompletion:(void(^)(BOOL didTap))completion;
 
-
+#if 0
 
 /**
  Creates and presents a new toast view with a message and displays it with the
@@ -214,7 +214,7 @@ extern const NSString * CSToastPositionBottom;
          duration:(NSTimeInterval)duration
          position:(id)position
        completion:(void(^)(BOOL didTap))completion;
-
+#endif
 @end
 
 /**

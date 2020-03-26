@@ -236,7 +236,9 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
             NSLog(@"===>点击 OK 按钮");
         }];
         
-    } else if (indexPath.row == 6) {
+    }
+#if 0
+    else if (indexPath.row == 6) {
         
         // Show a custom view as toast
         UIView *customView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 80, 400)];
@@ -281,6 +283,7 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
         [self.navigationController.view hideAllToasts];
         
     }
+#endif
 }
 
 @end
