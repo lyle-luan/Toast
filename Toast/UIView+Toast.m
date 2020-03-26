@@ -128,10 +128,10 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
                      }];
 }
 
-- (void)makeActivityToast: (NSString *)title withMessage: (NSString *)message withTimeoutCompletion:(void(^)(void))completion
+- (void)makeActivityToast: (NSString *)title withMessage: (NSString *)message withTimeoutCompletion:(void(^)(BOOL didTap))completion
 {
-#if 0
-    UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityTitleMessageViewKey);
+#if 1
+    UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityViewKey);
     if (existingActivityView != nil) return;
     
     CSToastStyle *style = [CSToastManager sharedStyle];
@@ -142,7 +142,6 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
     UIView *activityView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, wrapperWidth, wrapperHeight)];
     activityView.center = [self cs_centerPointForPosition:CSToastPositionCenter withToast:activityView];
     activityView.backgroundColor = style.backgroundColor;
-    activityView.alpha = 0.0;
     activityView.autoresizingMask = (UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin);
     activityView.layer.cornerRadius = style.cornerRadius;
     
@@ -219,17 +218,28 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
         [activityView addSubview:messageLabel];
     }
     
+    UIView *bgView = [[UIView alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    bgView.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.08];
+    bgView.userInteractionEnabled = YES;
+    [bgView addSubview:activityView];
+    
+    [self addSubview:bgView];
+    
     // associate the activity view with self
-    objc_setAssociatedObject (self, &CSToastActivityTitleMessageViewKey, activityView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject (self, &CSToastActivityViewKey, bgView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(bgView, &CSToastCompletionKey, completion, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+    [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
+         delay:0.0
+       options:(UIViewAnimationOptionCurveEaseOut)
+    animations:^{
+        bgView.alpha = 1.0;
+    } completion:^(BOOL finished) {
+        NSTimer *timer = [NSTimer timerWithTimeInterval:[[CSToastManager sharedStyle] activityTimeoutDuration] target:self selector:@selector(cs_hideActivityToast) userInfo:bgView repeats:NO];
+        [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
+        objc_setAssociatedObject(bgView, &CSToastTimerKey, timer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }];
     
-    [self addSubview:activityView];
-    
-    [UIView animateWithDuration:style.animationDuration
-                          delay:0.0
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-                         activityView.alpha = 1.0;
-                     } completion:nil];
 #endif
 }
 

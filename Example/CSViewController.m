@@ -172,7 +172,7 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
         } else if (indexPath.row == 3) {
             cell.textLabel.text = @"带文字 loading";
         } else if (indexPath.row == 4) {
-            cell.textLabel.text = @"取消 loading";
+            cell.textLabel.text = @"1秒后取消 loading";
         } else if (indexPath.row == 5) {
             cell.textLabel.text = @"Make toast with a custom style";
         } else if (indexPath.row == 6) {
@@ -218,13 +218,18 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
 
     } else if (indexPath.row == 3) {
         
-        [self.navigationController.view makeActivityToast:@"校准中" withMessage:@"请保持设备直立" withTimeoutCompletion:^() {
-            ;
+        [self.navigationController.view makeActivityToast:@"校准中" withMessage:@"请保持设备直立" withTimeoutCompletion:^(BOOL didTap) {
+            NSLog(@"===>超时 校准");
         }];
         
     } else if (indexPath.row == 4) {
         
-        [self.navigationController.view hideActivityToast];
+        [self.navigationController.view makeActivityToastWithTimeoutCompletion:^(BOOL didTap) {
+            NSLog(@"===>超时");
+        }];
+        dispatch_after(1, dispatch_get_main_queue(), ^{
+            [self.navigationController.view hideActivityToast];
+        });
         
     } else if (indexPath.row == 5) {
         
