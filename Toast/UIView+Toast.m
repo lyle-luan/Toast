@@ -81,7 +81,7 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
     }];
 }
 
-- (void)makeActivityToastWithTimeoutCompletion:(void(^)(void))completion
+- (void)makeActivityToastWithTimeoutCompletion:(void(^)(BOOL didTap))completion
 {
     UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityViewKey);
     if (existingActivityView != nil) return;
@@ -91,7 +91,6 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
     UIView *activityView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, style.activitySize.width, style.activitySize.height)];
     activityView.center = [self cs_centerPointForPosition:CSToastPositionCenter withToast:activityView];
     activityView.backgroundColor = style.backgroundColor;
-    activityView.alpha = 0.0;
     activityView.autoresizingMask = (UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin);
     activityView.layer.cornerRadius = style.cornerRadius;
     
@@ -112,23 +111,20 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
     bgView.userInteractionEnabled = YES;
     [bgView addSubview:activityView];
     
-    [self addSubview:activityView];
     [self addSubview:bgView];
-    [self bringSubviewToFront:activityView];
     
-    objc_setAssociatedObject (self, &CSToastActivityViewKey, activityView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    
-    [self addSubview:activityView];
-    
+    objc_setAssociatedObject (self, &CSToastActivityViewKey, bgView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(bgView, &CSToastCompletionKey, completion, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
     [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
                           delay:0.0
                         options:(UIViewAnimationOptionCurveEaseOut)
                      animations:^{
-                         activityView.alpha = 1.0;
+                         bgView.alpha = 1.0;
                      } completion:^(BOOL finished) {
-                         NSTimer *timer = [NSTimer timerWithTimeInterval:[[CSToastManager sharedStyle] activityTimeoutDuration] target:self selector:@selector(cs_hideActivityToast) userInfo:activityView repeats:NO];
+                         NSTimer *timer = [NSTimer timerWithTimeInterval:[[CSToastManager sharedStyle] activityTimeoutDuration] target:self selector:@selector(cs_hideActivityToast) userInfo:bgView repeats:NO];
                          [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
-                         objc_setAssociatedObject(activityView, &CSToastTimerKey, timer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                         objc_setAssociatedObject(bgView, &CSToastTimerKey, timer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
                      }];
 }
 

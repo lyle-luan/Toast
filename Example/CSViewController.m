@@ -212,7 +212,7 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
         
     } else if (indexPath.row == 2) {
         
-        [self.navigationController.view makeActivityToastWithTimeoutCompletion:^{
+        [self.navigationController.view makeActivityToastWithTimeoutCompletion:^(BOOL didTap) {
             NSLog(@"===>超时");
         }];
 
