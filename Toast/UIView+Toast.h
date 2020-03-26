@@ -48,6 +48,7 @@ extern const NSString * CSToastPositionBottom;
 - (void)makeActivityToastWithTimeoutCompletion:(void(^)(BOOL didTap))completion; //1.支持超时，页面写一个 BOOL，超时了则置位，这样返回结果就不响应，重新发送蓝牙后，该 BOOL 重新计算。
 - (void)makeActivityToast: (NSString *)title withMessage: (NSString *)message withTimeoutCompletion:(void(^)(BOOL didTap))completion;
 - (void)hideActivityToast;
+- (void)makeOkToast: (NSString *)title withImage: (UIImage *)image withBtnTitle: (NSString *)btnTitle withBtnCompletion:(void(^)(BOOL didTap))completion;
 
 
 

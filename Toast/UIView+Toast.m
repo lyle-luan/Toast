@@ -260,7 +260,106 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
     }
 }
 
+- (void)makeOkToast: (NSString *)title withImage: (UIImage *)image withBtnTitle: (NSString *)btnTitle withBtnCompletion:(void(^)(BOOL didTap))completion
+{
+    if (title == nil && image == nil) return;
+    
+    CSToastStyle *style = [CSToastManager sharedStyle];
+    
+    UILabel *titleLabel = nil;
+    UIImageView *imageView = nil;
+    
+    CGFloat wrapperWidth = 270.0f;
+    CGFloat wrapperHeight = 160.0f;
+    
+    UIView *wrapperView = [[UIView alloc] init];
+    wrapperView.autoresizingMask = (UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin);
+    wrapperView.frame = CGRectMake(0.0, 0.0, wrapperWidth, wrapperHeight);
+    wrapperView.layer.cornerRadius = style.cornerRadius;
+    if (style.displayShadow) {
+        wrapperView.layer.shadowColor = style.shadowColor.CGColor;
+        wrapperView.layer.shadowOpacity = style.shadowOpacity;
+        wrapperView.layer.shadowRadius = style.shadowRadius;
+        wrapperView.layer.shadowOffset = style.shadowOffset;
+    }
+    wrapperView.backgroundColor = style.backgroundColor;
+    
+    if(image != nil) {
+        imageView = [[UIImageView alloc] initWithImage:image];
+        imageView.contentMode = UIViewContentModeScaleAspectFit;
+        imageView.frame = CGRectMake((wrapperWidth-style.imageSize.width)/2, 30, style.imageSize.width, style.imageSize.height);
+        [wrapperView addSubview:imageView];
+    }
+    
+    if (title != nil) {
+        titleLabel = [[UILabel alloc] init];
+        titleLabel.numberOfLines = style.titleNumberOfLines;
+        titleLabel.font = style.titleFont;
+        titleLabel.textAlignment = style.titleAlignment;
+        titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        titleLabel.textColor = style.titleColor;
+        titleLabel.backgroundColor = [UIColor clearColor];
+        titleLabel.alpha = 1.0;
+        titleLabel.text = title;
+        CGSize maxSizeTitle = CGSizeMake(wrapperWidth, 24);
+        titleLabel.frame = CGRectMake(0.0, 12+imageView.frame.origin.y+imageView.frame.size.height, maxSizeTitle.width, maxSizeTitle.height);
+        [wrapperView addSubview:titleLabel];
+    }
+    
+    UIView *lineView = [[UIView alloc] init];
+    lineView.frame =CGRectMake(0, 17+titleLabel.frame.origin.y+titleLabel.frame.size.height, wrapperWidth, 0.3);
+    lineView.backgroundColor = [UIColor whiteColor];
+    [wrapperView addSubview:lineView];
+    
+    UIButton *okButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [okButton setTitle:btnTitle forState:UIControlStateNormal];
+    okButton.backgroundColor = [UIColor clearColor];
+    okButton.titleLabel.textColor = style.titleColor;
+    okButton.titleLabel.font = style.titleFont;
+    okButton.frame = CGRectMake(0, lineView.frame.origin.y+lineView.frame.size.height, wrapperWidth, 40);
+    [okButton addTarget:self action:@selector(tapOkButton:) forControlEvents:UIControlEventTouchUpInside];
+    [wrapperView addSubview:okButton];
+    
+    wrapperView.center = [self cs_centerPointForPosition:CSToastPositionCenter withToast:wrapperView];
+    
+    UIView *bgView = [[UIView alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    bgView.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.08];
+    bgView.userInteractionEnabled = YES;
+    [bgView addSubview:wrapperView];
+    
+    bgView.alpha = 0.0;
+    objc_setAssociatedObject(bgView, &CSToastCompletionKey, completion, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [[self cs_activeToasts] addObject:bgView];
+    [self addSubview:bgView];
+    
+    [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
+                          delay:0.0
+                        options:(UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction)
+                     animations:^{
+                         bgView.alpha = 1.0;
+                     } completion:^(BOOL finished) {
+                     }];
+}
 
+#pragma mark - target
+
+- (void)tapOkButton: (UIButton *)okBtn
+{
+    UIView *bgView = okBtn.superview.superview;
+    [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
+                          delay:0.0
+                        options:(UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState)
+                     animations:^{
+                         bgView.alpha = 0.0;
+                     } completion:^(BOOL finished) {
+                         [bgView removeFromSuperview];
+                         [[self cs_activeToasts] removeObject:bgView];
+                         void (^completion)(BOOL didTap) = objc_getAssociatedObject(bgView, &CSToastCompletionKey);
+                         if (completion) {
+                             completion(YES);
+                         }
+                     }];
+}
 
 
 

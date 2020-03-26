@@ -174,7 +174,7 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
         } else if (indexPath.row == 4) {
             cell.textLabel.text = @"1秒后取消 loading";
         } else if (indexPath.row == 5) {
-            cell.textLabel.text = @"Make toast with a custom style";
+            cell.textLabel.text = @"OK 按钮";
         } else if (indexPath.row == 6) {
             cell.textLabel.text = @"Show a custom view as toast";
         } else if (indexPath.row == 7) {
@@ -232,21 +232,9 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
         });
         
     } else if (indexPath.row == 5) {
-        
-        // Make toast with a custom style
-        CSToastStyle *style = [[CSToastStyle alloc] initWithDefaultStyle];
-        style.messageFont = [UIFont fontWithName:@"Zapfino" size:14.0];
-        style.messageColor = [UIColor redColor];
-        style.messageAlignment = NSTextAlignmentCenter;
-        style.backgroundColor = [UIColor yellowColor];
-        
-        [self.navigationController.view makeToast:@"This is a piece of toast with a custom style"
-                                         duration:3.0
-                                         position:CSToastPositionBottom
-                                            style:style];
-        
-        // @NOTE: Uncommenting the line below will set the shared style for all toast methods:
-        // [CSToastManager setSharedStyle:style];
+        [self.navigationController.view makeOkToast:@"校准失败，请重新校准" withImage:[UIImage imageNamed:@"toast_failed"] withBtnTitle:@"好的" withBtnCompletion:^(BOOL didTap) {
+            NSLog(@"===>点击 OK 按钮");
+        }];
         
     } else if (indexPath.row == 6) {
         
