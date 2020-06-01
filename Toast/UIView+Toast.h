@@ -41,6 +41,14 @@ extern const NSString * CSToastPositionBottom;
  The `showToast:` methods display any view as toast.
  
  */
+
+
+@interface WFProgressView : UIView
+@property(nonatomic, strong) UIColor *progressTintColor;
+@property(nonatomic, strong) UIColor *trackTintColor;
+- (void)setProgress:(float)progress animated:(BOOL)animated;
+@end
+
 @interface UIView (Toast)
 
 - (void)makeSuccessToast: (NSString *)title withCompletion:(void(^)(BOOL didTap))completion;
@@ -49,6 +57,7 @@ extern const NSString * CSToastPositionBottom;
 - (void)makeActivityToast: (NSString *)title withMessage: (NSString *)message withTimeoutCompletion:(void(^)(BOOL didTap))completion;
 - (void)hideActivityToast;
 - (void)makeOkToast: (NSString *)title withImage: (UIImage *)image withBtnTitle: (NSString *)btnTitle withBtnCompletion:(void(^)(BOOL didTap))completion;
+- (void)makeProgressToast: (NSString *)title withProgpressPercent: (NSInteger)progressPercent withCompletion:(void(^)(void))completion;
 
 #if 0
 
@@ -243,6 +252,9 @@ extern const NSString * CSToastPositionBottom;
  The message color. Default is `[UIColor whiteColor]`.
  */
 @property (strong, nonatomic) UIColor *messageColor;
+
+@property (strong, nonatomic) UIColor *progressTintColor;
+@property (strong, nonatomic) UIColor *trackTintColor;
 
 /**
  A percentage value from 0.0 to 1.0, representing the maximum width of the toast

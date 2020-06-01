@@ -44,6 +44,10 @@ static const NSString * CSToastActivityViewKey      = @"CSToastActivityViewKey";
 static const NSString * CSToastQueueKey             = @"CSToastQueueKey";
 static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActivityTitleMessageViewKey";
 
+static const NSString * CSToastActivityViewProgressViewKey      = @"CSToastActivityViewProgressViewKey";
+static const NSString * CSToastActivityViewProgressTitleViewKey      = @"CSToastActivityViewProgressTitleViewKey";
+
+
 @interface UIView (ToastPrivate)
 
 /**
@@ -339,6 +343,117 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
                          bgView.alpha = 1.0;
                      } completion:^(BOOL finished) {
                      }];
+}
+
+- (void)makeProgressToast: (NSString *)title withProgpressPercent: (NSInteger)progressPercent withCompletion:(void(^)(void))completion
+{
+    UIView *existingActivityView = (UIView *)objc_getAssociatedObject(self, &CSToastActivityViewKey);
+    if (existingActivityView == nil) {
+        if (progressPercent >= 100) {
+            return;
+        }
+        CSToastStyle *style = [CSToastManager sharedStyle];
+        
+        UILabel *titleLabel = nil;
+        WFProgressView *progressView = nil;
+        
+        CGFloat wrapperWidth = 270.0f;
+        CGFloat wrapperHeight = 140.0f;
+        
+        UIView *wrapperView = [[UIView alloc] init];
+        wrapperView.autoresizingMask = (UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin);
+        wrapperView.frame = CGRectMake(0.0, 0.0, wrapperWidth, wrapperHeight);
+        wrapperView.layer.cornerRadius = style.cornerRadius;
+        if (style.displayShadow) {
+            wrapperView.layer.shadowColor = style.shadowColor.CGColor;
+            wrapperView.layer.shadowOpacity = style.shadowOpacity;
+            wrapperView.layer.shadowRadius = style.shadowRadius;
+            wrapperView.layer.shadowOffset = style.shadowOffset;
+        }
+        wrapperView.backgroundColor = [UIColor whiteColor];
+        
+        progressView = [[WFProgressView alloc] initWithFrame:CGRectMake(35, 54, wrapperWidth-35*2, 12.0)];
+        progressView.progressTintColor = style.progressTintColor;
+        progressView.trackTintColor = style.trackTintColor;
+//        progressView.frame = CGRectMake(35, 54, wrapperWidth-35*2, 12.0);
+//        progressView.transform = CGAffineTransformMakeScale(1.0f, 12.0f / progressView.frame.size.height);
+        [progressView setProgress:progressPercent / 100.0 animated:YES];
+        for (UIImageView *imageView in progressView.subviews)
+        {
+            imageView.layer.cornerRadius = progressView.frame.size.height / 2;
+            imageView.clipsToBounds = YES;
+        }
+        [wrapperView addSubview:progressView];
+        
+        if (title != nil) {
+            titleLabel = [[UILabel alloc] init];
+            titleLabel.numberOfLines = style.titleNumberOfLines;
+            titleLabel.font = style.titleFont;
+            titleLabel.textAlignment = style.titleAlignment;
+            titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+            titleLabel.textColor = style.backgroundColor;
+            titleLabel.backgroundColor = [UIColor clearColor];
+            titleLabel.alpha = 1.0;
+            titleLabel.text = title;
+            CGSize maxSizeTitle = CGSizeMake(wrapperWidth, 24);
+            titleLabel.frame = CGRectMake(0.0, 12+progressView.frame.origin.y+progressView.frame.size.height, maxSizeTitle.width, maxSizeTitle.height);
+            [wrapperView addSubview:titleLabel];
+        }
+        
+        wrapperView.center = [self cs_centerPointForPosition:CSToastPositionCenter withToast:wrapperView];
+        
+        UIView *bgView = [[UIView alloc] initWithFrame:[UIScreen mainScreen].bounds];
+        bgView.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.08];
+        bgView.userInteractionEnabled = YES;
+        [bgView addSubview:wrapperView];
+        
+        bgView.alpha = 0.0;
+//        [[self cs_activeToasts] addObject:bgView];
+        [self addSubview:bgView];
+        objc_setAssociatedObject(self, &CSToastActivityViewKey, bgView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(bgView, &CSToastActivityViewProgressViewKey, progressView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(bgView, &CSToastActivityViewProgressTitleViewKey, titleLabel, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(bgView, &CSToastCompletionKey, completion, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        
+        [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
+                              delay:0.0
+                            options:(UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction)
+                         animations:^{
+                             bgView.alpha = 1.0;
+                         } completion:^(BOOL finished) {
+                         }];
+    }
+    else {
+        WFProgressView *progressView = (WFProgressView *)objc_getAssociatedObject(existingActivityView, &CSToastActivityViewProgressViewKey);
+        UILabel *titleLbel = (UILabel *)objc_getAssociatedObject(existingActivityView, &CSToastActivityViewProgressTitleViewKey);
+        if ((progressView != nil) && (titleLbel != nil))
+        {
+            if (progressPercent > 100) {
+                progressPercent = 100;
+            }
+            [progressView setProgress:progressPercent / 100.0 animated:YES];
+            if (title != nil) {
+                titleLbel.text = title;
+            }
+            if (progressPercent == 100)
+            {
+                [UIView animateWithDuration:[[CSToastManager sharedStyle] animationDuration]
+                                      delay:0.0
+                                    options:(UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState)
+                                 animations:^{
+                                     existingActivityView.alpha = 0.0;
+                                 } completion:^(BOOL finished) {
+                                     [existingActivityView removeFromSuperview];
+                                     objc_setAssociatedObject (self, &CSToastActivityViewKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+                                     void (^completion)(void) = objc_getAssociatedObject(existingActivityView, &CSToastCompletionKey);
+                                     if (completion) {
+                                         completion();
+                                     }
+                                 }];
+            }
+        }
+    }
 }
 
 #pragma mark - target
@@ -926,6 +1041,82 @@ static const NSString * CSToastActivityTitleMessageViewKey      = @"CSToastActiv
 
 + (id)defaultPosition {
     return [[self sharedManager] defaultPosition];
+}
+
+@end
+
+@interface WFProgressView ()
+@property (nonatomic, readwrite, strong) UIView *progressView;
+@property (nonatomic, readwrite, strong) UIView *trackView;
+@end
+
+@implementation WFProgressView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.progressTintColor = [UIColor blackColor];
+        self.trackTintColor = [UIColor whiteColor];
+        
+        [self addSubview:self.progressView];
+        [self addSubview:self.trackView];
+        [self bringSubviewToFront:self.progressView];
+    }
+    return self;
+}
+
+- (void)setProgress:(float)progress animated:(BOOL)animated
+{
+    [UIView animateWithDuration:0.1 animations:^{
+        CGFloat maxWidth = self.bounds.size.width;
+        CGFloat width = maxWidth * progress;
+        CGRect frame = self.progressView.frame;
+        frame.size.width = width;
+        self.progressView.frame = frame;
+    } completion:^(BOOL finished) {
+        ;
+    }];
+}
+
+- (void)setProgressTintColor:(UIColor *)progressTintColor
+{
+    _progressTintColor = progressTintColor;
+    self.progressView.backgroundColor = progressTintColor;
+}
+
+- (void)setTrackTintColor:(UIColor *)trackTintColor
+{
+    _trackTintColor = trackTintColor;
+    self.trackView.backgroundColor = trackTintColor;
+}
+
+#pragma mark - UI property
+
+- (UIView *)progressView
+{
+    if (_progressView == nil){
+        _progressView = [[UIView alloc] init];
+        CGRect frame = self.bounds;
+        frame.size.width = 0;
+        _progressView.frame = frame;
+        _progressView.backgroundColor = [UIColor blackColor];
+        _progressView.layer.cornerRadius = self.bounds.size.height / 2.0f;
+        _progressView.layer.masksToBounds = YES;
+    }
+    return _progressView;
+}
+
+- (UIView *)trackView
+{
+    if (_trackView == nil){
+        _trackView = [[UIView alloc] init];
+        _trackView.frame = self.bounds;
+        _trackView.backgroundColor = [UIColor blackColor];
+        _trackView.layer.cornerRadius = self.bounds.size.height / 2.0f;
+        _trackView.layer.masksToBounds = YES;
+    }
+    return _trackView;
 }
 
 @end

@@ -78,6 +78,8 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
     style.maxHeightPercentage = 0.21;
     style.showDuration = 1.5;
     style.activityTimeoutDuration = 5;
+    style.progressTintColor = [UIColor blackColor];
+    style.trackTintColor = [UIColor grayColor];
     
      [CSToastManager setSharedStyle:style];
 }
@@ -176,7 +178,7 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
         } else if (indexPath.row == 5) {
             cell.textLabel.text = @"OK 按钮";
         } else if (indexPath.row == 6) {
-            cell.textLabel.text = @"Show a custom view as toast";
+            cell.textLabel.text = @"进度";
         } else if (indexPath.row == 7) {
             cell.textLabel.text = @"Show an image as toast at point\n(110, 110)";
         } else if (indexPath.row == 8) {
@@ -236,6 +238,11 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
             NSLog(@"===>点击 OK 按钮");
         }];
         
+    } else if (indexPath.row == 6) {
+        NSInteger progress = 10;
+        for (NSInteger index=0; index<11; index++) {
+            [self makeProgress:progress + index*10 withDelaySecond:index];
+        }
     }
 #if 0
     else if (indexPath.row == 6) {
@@ -284,6 +291,15 @@ static NSString * ZOToastDemoCellId     = @"ZOToastDemoCellId";
         
     }
 #endif
+}
+
+- (void)makeProgress: (NSInteger)progress withDelaySecond: (NSInteger)second
+{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(second * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.navigationController.view makeProgressToast:[NSString stringWithFormat:@"更新中(%zd%%)", progress] withProgpressPercent:progress withCompletion:^{
+            NSLog(@"更新完成");
+        }];
+    });
 }
 
 @end
